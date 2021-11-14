@@ -21,7 +21,7 @@ first_df = pd.read_csv("to-ZETW.csv", dtype="unicode")
 second_df = pd.read_csv("AF-to-IT.csv", dtype="unicode")
 All = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '#', '$', '%', '&', '(', ')', '+', '/', ":"]
 
-# -------------------------------- Spotify ----------------------------------#
+# -------------------------------- Spotify ---------------------------------#
 CLIENT_ID = os.environ["SPOTIFY-ID"]
 CLIENT_SECRET = os.environ["SPOTIFY-SECRET"]
 REDIRECT = "http://example.com"
