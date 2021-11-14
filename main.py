@@ -15,7 +15,7 @@ QUEUE = []
 ID = 0
 playing = False
 LOOP = False
-key = "ODk4MzQ4MTI2NjMxNTIyMzk0.YWi54w.cw6vkTMrMnDB8JDT2Ti0ZwcoGb8"
+key = "bo0Hj3FGQSCk7VXj20SA8d2F9vm1-uft"
 first_df = pd.read_csv("to-ZETW.csv", dtype="unicode")
 second_df = pd.read_csv("AF-to-IT.csv", dtype="unicode")
 All = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '#', '$', '%', '&', '(', ')', '+', '/', ":"]
