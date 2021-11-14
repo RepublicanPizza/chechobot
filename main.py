@@ -43,7 +43,7 @@ Client = spotipy.client.Spotify(auth=token,
 def refresh():
     global token, authorization
 
-    if authorization.is_token_expired(token):
+    if authorization.is_token_expired(authorization.get_cached_token()):
         token_info = authorization.refresh_access_token(token['refresh_token'])
         token = token_info
 
