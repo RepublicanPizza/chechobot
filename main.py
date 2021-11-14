@@ -7,6 +7,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import random as ran
+import os
 
 # -------------------------------- Parameters ----------------------------------#
 PLAYLIST = False
@@ -15,14 +16,14 @@ QUEUE = []
 ID = 0
 playing = False
 LOOP = False
-key = "bo0Hj3FGQSCk7VXj20SA8d2F9vm1-uft"
+key = os.environ["DISCORD"]
 first_df = pd.read_csv("to-ZETW.csv", dtype="unicode")
 second_df = pd.read_csv("AF-to-IT.csv", dtype="unicode")
 All = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '#', '$', '%', '&', '(', ')', '+', '/', ":"]
 
 # -------------------------------- Spotify ----------------------------------#
-CLIENT_ID = "b621f953ffc3452489f3368b311df333"
-CLIENT_SECRET = "9c830fa0640547ac8c037bc17780c533"
+CLIENT_ID = os.environ["SPOTIFY-ID"]
+CLIENT_SECRET = os.environ["SPOTIFY-SECRET"]
 REDIRECT = "http://example.com"
 SCOPE = "playlist-read-private"
 
