@@ -1,0 +1,5 @@
+discord.py
+spotipy
+pandas
+random
+python-dotenv
