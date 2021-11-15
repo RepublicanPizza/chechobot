@@ -44,8 +44,8 @@ def refresh():
     global token, authorization
 
     if authorization.is_token_expired(authorization.get_cached_token()):
-        token_info = authorization.refresh_access_token(token['refresh_token'])
-        token = token_info
+        token_info = authorization.refresh_access_token(authorization.get_cached_token()['refresh_token'])
+        token = token_info["access_token"]
 
 
 def getTracks(url):
