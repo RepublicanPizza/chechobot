@@ -29,8 +29,8 @@ SCOPE = "playlist-read-private"
 
 credentials = spotipy.oauth2.SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 
-authorization = spotipy.oauth2.SpotifyOAuth(client_id=credentials.client_id, client_secret=credentials.client_secret,
-                                            redirect_uri=REDIRECT, cache_path=".cache", scope=SCOPE)
+authorization = SpotifyOAuth(client_id=credentials.client_id, client_secret=credentials.client_secret,
+                             redirect_uri=REDIRECT, cache_path=".cache", scope=SCOPE)
 
 # authorization.get_access_token(code=authorization.get_authorization_code())
 token = authorization.get_cached_token()["access_token"]
@@ -41,11 +41,14 @@ Client = spotipy.client.Spotify(auth=token,
 
 
 def refresh():
-    global token, authorization
+    global token, authorization, Client, credentials
 
     if authorization.is_token_expired(authorization.get_cached_token()):
         token_info = authorization.refresh_access_token(authorization.get_cached_token()['refresh_token'])
         token = token_info["access_token"]
+        Client = spotipy.client.Spotify(auth=token,
+                                        client_credentials_manager=credentials,
+                                        oauth_manager=authorization, auth_manager=authorization.cache_handler)
 
 
 def getTracks(url):
