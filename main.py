@@ -2,12 +2,14 @@ import discord
 from aiohttp import ClientError
 from discord.errors import ClientException, NotFound
 from discord.ext import commands, tasks
+from requests import HTTPError
 from youtube_dl import YoutubeDL
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import random as ran
 import os
+import time
 
 # -------------------------------- Parameters ----------------------------------#
 PLAYLIST = False
@@ -16,6 +18,7 @@ QUEUE = []
 ID = 0
 playing = False
 LOOP = False
+TIME = 0
 key = os.environ["DISCORD"]
 first_df = pd.read_csv("to-ZETW.csv", dtype="unicode")
 second_df = pd.read_csv("AF-to-IT.csv", dtype="unicode")
@@ -32,23 +35,16 @@ credentials = spotipy.oauth2.SpotifyClientCredentials(client_id=CLIENT_ID, clien
 authorization = SpotifyOAuth(client_id=credentials.client_id, client_secret=credentials.client_secret,
                              redirect_uri=REDIRECT, cache_path=".cache", scope=SCOPE)
 
-# authorization.get_access_token(code=authorization.get_authorization_code())
-token = authorization.get_cached_token()["access_token"]
-
-Client = spotipy.client.Spotify(auth=token,
-                                client_credentials_manager=credentials,
-                                oauth_manager=authorization, auth_manager=authorization.cache_handler)
+Client = spotipy.client.Spotify(auth=authorization.get_cached_token()["access_token"],
+                                requests_timeout=10, retries=10)
 
 
 def refresh():
-    global token, authorization, Client, credentials
+    global Client
 
-    if authorization.is_token_expired(authorization.get_cached_token()):
-        token_info = authorization.refresh_access_token(authorization.get_cached_token()['refresh_token'])
-        token = token_info["access_token"]
-        Client = spotipy.client.Spotify(auth=token,
-                                        client_credentials_manager=credentials,
-                                        oauth_manager=authorization, auth_manager=authorization.cache_handler)
+    token_info = authorization.refresh_access_token(authorization.get_cached_token()['refresh_token'])
+    token = token_info["access_token"]
+    Client = spotipy.client.Spotify(auth=token, requests_timeout=10, retries=10)
 
 
 def getTracks(url):
@@ -69,43 +65,57 @@ def getTracks(url):
                 time = sec_a_MinSec(duration)
                 QUEUE.append([title, time, url])
     elif "open.spotify.com/track" in url:
-        PLAYLIST = False
-        search = Client.track(f"{url}")
-        TRACK_TIME = mils_to_MinSec(search["duration_ms"])
-        TRACK_ARTIST = search["artists"]
-        if len(TRACK_ARTIST) > 0:
-            TRACK_ARTIST = TRACK_ARTIST[0]["name"]
-        elif len(TRACK_ARTIST) == 0:
-            TRACK_ARTIST = search["artists"]["name"]
-        TRACK_NAME = search["name"]
-        TRACK = TRACK_ARTIST + " " + TRACK_NAME
-        QUEUE.append([TRACK, TRACK_TIME])
+        try:
+            PLAYLIST = False
+            search = Client.track(f"{url}")
+            TRACK_TIME = mils_to_MinSec(search["duration_ms"])
+            TRACK_ARTIST = search["artists"]
+            if len(TRACK_ARTIST) > 0:
+                TRACK_ARTIST = TRACK_ARTIST[0]["name"]
+            elif len(TRACK_ARTIST) == 0:
+                TRACK_ARTIST = search["artists"]["name"]
+            TRACK_NAME = search["name"]
+            TRACK = TRACK_ARTIST + " " + TRACK_NAME
+            QUEUE.append([TRACK, TRACK_TIME])
+        except spotipy.exceptions.SpotifyException or HTTPError:
+            refresh()
+            getTracks(url)
+
     elif "open.spotify.com/playlist" in url:
-        PLAYLIST = True
-        search = Client.playlist_tracks(f"{url}")
-        for n in range(0, len(search["items"])):
-            TRACK_ARTIST = search["items"][n]["track"]["artists"]
-            if len(TRACK_ARTIST) > 0:
-                TRACK_ARTIST = TRACK_ARTIST[0]["name"]
-            else:
-                TRACK_ARTIST = search["items"][n]["track"]["artists"]["name"]
-            TRACK_NAME = search["items"][n]["track"]["name"]
-            TRACK_TIME = mils_to_MinSec(search["items"][n]["track"]["duration_ms"])
-            TRACK = TRACK_ARTIST + " " + TRACK_NAME
-            QUEUE.append([TRACK, TRACK_TIME])
+        try:
+            PLAYLIST = True
+            search = Client.playlist_tracks(f"{url}")
+            for n in range(0, len(search["items"])):
+                TRACK_ARTIST = search["items"][n]["track"]["artists"]
+                if len(TRACK_ARTIST) > 0:
+                    TRACK_ARTIST = TRACK_ARTIST[0]["name"]
+                else:
+                    TRACK_ARTIST = search["items"][n]["track"]["artists"]["name"]
+                TRACK_NAME = search["items"][n]["track"]["name"]
+                TRACK_TIME = mils_to_MinSec(search["items"][n]["track"]["duration_ms"])
+                TRACK = TRACK_ARTIST + " " + TRACK_NAME
+                QUEUE.append([TRACK, TRACK_TIME])
+        except spotipy.exceptions.SpotifyException or HTTPError:
+            refresh()
+            getTracks(url)
+
     elif "open.spotify.com/album" in url:
-        PLAYLIST = True
-        search = Client.album_tracks(f"{url}")
-        for n in range(0, len(search["items"])):
-            TRACK_ARTIST = search["items"][n]["artists"]
-            if len(TRACK_ARTIST) > 0:
-                TRACK_ARTIST = TRACK_ARTIST[0]["name"]
-            else:
-                TRACK_ARTIST = search["items"][n]["artists"]["name"]
-            TRACK_NAME = search["items"][n]["name"]
-            TRACK = TRACK_ARTIST + " " + TRACK_NAME
-            TRACK_TIME = mils_to_MinSec(search["items"][n]["duration_ms"])
-            QUEUE.append([TRACK, TRACK_TIME])
+        try:
+            PLAYLIST = True
+            search = Client.album_tracks(f"{url}")
+            for n in range(0, len(search["items"])):
+                TRACK_ARTIST = search["items"][n]["artists"]
+                if len(TRACK_ARTIST) > 0:
+                    TRACK_ARTIST = TRACK_ARTIST[0]["name"]
+                else:
+                    TRACK_ARTIST = search["items"][n]["artists"]["name"]
+                TRACK_NAME = search["items"][n]["name"]
+                TRACK = TRACK_ARTIST + " " + TRACK_NAME
+                TRACK_TIME = mils_to_MinSec(search["items"][n]["duration_ms"])
+                QUEUE.append([TRACK, TRACK_TIME])
+        except spotipy.exceptions.SpotifyException or HTTPError:
+            refresh()
+            getTracks(url)
     else:
         PLAYLIST = False
         youtube_op = {"format": "bestaudio", "noplaylist": "True"}
@@ -226,10 +236,11 @@ async def play_music(ctx):
 
 
 def play_next(ctx):
-    global playing, INDEX, QUEUE, LOOP
+    global playing, INDEX, QUEUE, LOOP, TIME
     refresh()
     if INDEX == len(QUEUE) and LOOP:
         INDEX = 0
+
     if len(QUEUE) > INDEX:
         ff_op = {"before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5", "options": "-vn"}
         if len(QUEUE[INDEX]) == 3:
@@ -239,6 +250,7 @@ def play_next(ctx):
             save(QUEUE[INDEX][0])
             playing = True
             INDEX += 1
+            TIME = time.time()
         elif len(QUEUE[INDEX]) == 2:
             url = downloadSpoti(INDEX)
             voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
@@ -246,6 +258,7 @@ def play_next(ctx):
             save(QUEUE[INDEX][0])
             playing = True
             INDEX += 1
+            TIME = time.time()
     else:
         playing = False
 
