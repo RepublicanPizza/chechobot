@@ -236,7 +236,6 @@ async def play_music(ctx):
 
 def play_next(ctx):
     global playing, INDEX, QUEUE, LOOP, TIME
-    refresh()
     if INDEX == len(QUEUE) and LOOP:
         INDEX = 0
 
