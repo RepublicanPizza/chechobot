@@ -77,6 +77,7 @@ def getTracks(url):
             TRACK_NAME = search["name"]
             TRACK = TRACK_ARTIST + " " + TRACK_NAME
             QUEUE.append([TRACK, TRACK_TIME])
+
         except spotipy.exceptions.SpotifyException or HTTPError:
             refresh()
             getTracks(url)
@@ -95,6 +96,7 @@ def getTracks(url):
                 TRACK_TIME = mils_to_MinSec(search["items"][n]["track"]["duration_ms"])
                 TRACK = TRACK_ARTIST + " " + TRACK_NAME
                 QUEUE.append([TRACK, TRACK_TIME])
+
         except spotipy.exceptions.SpotifyException or HTTPError:
             refresh()
             getTracks(url)
@@ -113,6 +115,7 @@ def getTracks(url):
                 TRACK = TRACK_ARTIST + " " + TRACK_NAME
                 TRACK_TIME = mils_to_MinSec(search["items"][n]["duration_ms"])
                 QUEUE.append([TRACK, TRACK_TIME])
+
         except spotipy.exceptions.SpotifyException or HTTPError:
             refresh()
             getTracks(url)
@@ -197,11 +200,9 @@ async def p(ctx, title):
         else:
             if voice is None:
                 await vc.connect()
-                refresh()
                 getTracks(title)
                 await play_music(ctx)
             elif voice.channel and voice.channel == vc:
-                refresh()
                 getTracks(title)
                 await play_music(ctx)
     else:
@@ -211,14 +212,12 @@ async def p(ctx, title):
         if voice.channel != vc:
             await ctx.send("Already playing on another channel")
         elif voice.channel == vc and not PLAYLIST:
-            refresh()
             getTracks(title)
             item = len(QUEUE) - 1
             embed = discord.Embed(color=discord.Colour.orange())
             embed.set_author(name=f" '{QUEUE[item][0]}' added to queue")
             await ctx.send(embed=embed, delete_after=60)
         elif voice.channel == vc and PLAYLIST:
-            refresh()
             getTracks(title)
             embed = discord.Embed(color=discord.Colour.orange())
             embed.set_author(name="Playlist added to queue")
