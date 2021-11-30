@@ -1,5 +1,4 @@
 import discord
-from aiohttp import ClientError
 from discord.errors import ClientException, NotFound
 from discord.ext import commands, tasks
 from requests import HTTPError
@@ -188,7 +187,7 @@ async def ping(ctx):
 # -------------------------------- Play CMD ----------------------------------#
 
 @client.command(name="p", help="Searches and plays the song by title or YT url or Spotify Url")
-async def p(ctx, title):
+async def p(ctx, *, args):
     global playing, INDEX, PLAYLIST, QUEUE
     if not playing:
         try:
@@ -200,10 +199,10 @@ async def p(ctx, title):
         else:
             if voice is None:
                 await vc.connect()
-                getTracks(title)
+                getTracks(args)
                 await play_music(ctx)
             elif voice.channel and voice.channel == vc:
-                getTracks(title)
+                getTracks(args)
                 await play_music(ctx)
     else:
         user = ctx.message.author
@@ -212,13 +211,13 @@ async def p(ctx, title):
         if voice.channel != vc:
             await ctx.send("Already playing on another channel")
         elif voice.channel == vc and not PLAYLIST:
-            getTracks(title)
+            getTracks(args)
             item = len(QUEUE) - 1
             embed = discord.Embed(color=discord.Colour.orange())
             embed.set_author(name=f" '{QUEUE[item][0]}' added to queue")
             await ctx.send(embed=embed, delete_after=60)
         elif voice.channel == vc and PLAYLIST:
-            getTracks(title)
+            getTracks(args)
             embed = discord.Embed(color=discord.Colour.orange())
             embed.set_author(name="Playlist added to queue")
             await ctx.send(embed=embed, delete_after=60)
