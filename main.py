@@ -52,7 +52,7 @@ def getTracks(url):
     if "www.youtube.com" in url:
         PLAYLIST = False
         url = url[32:43]
-        youtube_op = {"format": "bestaudio", "noplaylist": "True"}
+        youtube_op = {"format": "bestaudio", "noplaylist": "True", "--age-limit": 25}
         with YoutubeDL(youtube_op) as yt:
             try:
                 info = yt.extract_info("ytsearch:%s" % f"{url}", download=False)["entries"][0]
@@ -121,7 +121,7 @@ def getTracks(url):
             getTracks(url)
     else:
         PLAYLIST = False
-        youtube_op = {"format": "bestaudio", "noplaylist": "True"}
+        youtube_op = {"format": "bestaudio", "noplaylist": "True", "--age-limit": 25}
         with YoutubeDL(youtube_op) as yt:
             try:
                 info = yt.extract_info("ytsearch:%s" % f"{url}", download=False)["entries"][0]
@@ -263,7 +263,7 @@ def play_next(ctx):
 
 def downloadSpoti(INDEX):
     global QUEUE
-    youtube_op = {"format": "bestaudio", "noplaylist": "True"}
+    youtube_op = {"format": "bestaudio", "noplaylist": "True", "--age-limit": 25}
     with YoutubeDL(youtube_op) as yt:
         try:
             info = yt.extract_info("ytsearch:%s" % f"{QUEUE[INDEX][0]}", download=False)["entries"][0]
