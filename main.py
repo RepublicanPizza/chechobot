@@ -229,7 +229,7 @@ async def play_music(ctx):
     embed = discord.Embed(color=discord.Color.orange())
     play_next(ctx)
     embed.set_author(name=f"Currently playing: {QUEUE[INDEX - 1][0]}")
-    after = After(QUEUE[INDEX - 1][1]) + 5
+    after = After(QUEUE[INDEX - 1][1]) + 10
     message = await ctx.send(embed=embed, delete_after=after)
     ID = message.id
 
@@ -286,7 +286,7 @@ async def on_message_delete(message):
     if message.author == client.user and playing and message.id == ID:
         embed = discord.Embed(color=discord.Color.orange())
         embed.set_author(name=f"Currently playing: {QUEUE[INDEX - 1][0]}")
-        after = After(QUEUE[INDEX - 1][1])
+        after = After(QUEUE[INDEX - 1][1]) + 10
         message = await message.channel.send(embed=embed, delete_after=after)
         ID = message.id
 
