@@ -531,6 +531,7 @@ async def cq(ctx):
     if len(QUEUE) > 0:
         QUEUE = []
         INDEX = 0
+        playing = False
         await pause(ctx)
         embed = discord.Embed(color=discord.Colour.orange())
         embed.set_author(name="The queue has been cleared")
