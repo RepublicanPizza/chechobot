@@ -454,7 +454,7 @@ async def random(ctx, amount: int = 1):
         except TypeError:
             await random(ctx)
         else:
-            await p(ctx, choice)
+            await p(choice)
 
 
 def randWord(lan):
