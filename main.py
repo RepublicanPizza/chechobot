@@ -77,7 +77,7 @@ def getTracks(url):
             TRACK = TRACK_ARTIST + " " + TRACK_NAME
             QUEUE.append([TRACK, TRACK_TIME])
 
-        except spotipy.exceptions.SpotifyException or HTTPError:
+        except spotipy.exceptions.SpotifyException or HTTPError or TypeError:
             refresh()
             getTracks(url)
 
@@ -96,7 +96,7 @@ def getTracks(url):
                 TRACK = TRACK_ARTIST + " " + TRACK_NAME
                 QUEUE.append([TRACK, TRACK_TIME])
 
-        except spotipy.exceptions.SpotifyException or HTTPError:
+        except spotipy.exceptions.SpotifyException or HTTPError or TypeError:
             refresh()
             getTracks(url)
 
@@ -115,7 +115,7 @@ def getTracks(url):
                 TRACK_TIME = mils_to_MinSec(search["items"][n]["duration_ms"])
                 QUEUE.append([TRACK, TRACK_TIME])
 
-        except spotipy.exceptions.SpotifyException or HTTPError:
+        except spotipy.exceptions.SpotifyException or HTTPError or TypeError:
             refresh()
             getTracks(url)
     else:
@@ -527,7 +527,7 @@ def randMusic():
 
 @client.command(name="Cq", help="Clears the queue")
 async def cq(ctx):
-    global QUEUE, INDEX, playing
+    global QUEUE, INDEX
     if len(QUEUE) > 0:
         QUEUE = []
         INDEX = 0
@@ -546,7 +546,7 @@ async def haceme_un_sanguche(ctx):
 
 @client.command(name="boca", help="Dale boca dale")
 async def boca(ctx):
-    await p(ctx, "https://www.youtube.com/watch?v=jrzOn0Uz15g&ab_channel=Niglett")
+    await p(ctx, args="https://www.youtube.com/watch?v=jrzOn0Uz15g&ab_channel=Niglett")
     await ctx.send("Vamos boca :blue_heart::yellow_heart::blue_heart:")
 
 
