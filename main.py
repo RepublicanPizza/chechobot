@@ -510,10 +510,14 @@ def randMusic():
     song_list_f = []
     if type(song_list1) == list and len(song_list1) > 0:
         for item in song_list1:
-            song = Client.search(type="track", q=item, limit=1)
-            if len(song["tracks"]["items"]) > 0:
-                song = song["tracks"]["items"][0]["external_urls"]["spotify"]
-                song_list_f.append(song)
+            try:
+                song = Client.search(type="track", q=item, limit=1)
+                if len(song["tracks"]["items"]) > 0:
+                    song = song["tracks"]["items"][0]["external_urls"]["spotify"]
+                    song_list_f.append(song)
+            except spotipy.exceptions.SpotifyException or HTTPError or TypeError:
+                refresh()
+                randMusic()
 
         if type(song_list_f) == list and len(song_list_f) >= 1:
             return song_list_f
@@ -560,5 +564,12 @@ async def help(ctx):
 
     await ctx.send(embed=embed, delete_after=100)
 
+@client.command(name="nene_malo", help="Lo bailan las rochas tambien las chetas")
+async def nene_malo(ctx):
+    await p(ctx, args="https://open.spotify.com/track/3lC4mM6NiSLttfYTv1HTNQ?si=973671fd69054a13")
+    await ctx.send("Lo bailan las rochas tambien las chetas")
+
+#@client.command(name="fiesta", help="Fiestita")
+#async def fiesta(ctx):
 
 client.run(key)
