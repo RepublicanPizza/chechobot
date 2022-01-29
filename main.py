@@ -1,6 +1,8 @@
+import asyncprawcore
 import discord
-from discord.errors import ClientException, NotFound
-from discord.ext import commands, tasks
+from discord import Embed
+from discord.errors import NotFound
+from discord.ext import commands
 from requests import HTTPError
 from youtube_dl import YoutubeDL
 import spotipy
@@ -9,6 +11,7 @@ import pandas as pd
 import random as ran
 import os
 import time
+import asyncpraw
 
 # -------------------------------- Parameters ----------------------------------#
 PLAYLIST = False
@@ -22,12 +25,18 @@ key = os.environ["DISCORD"]
 first_df = pd.read_csv("to-ZETW.csv", dtype="unicode")
 second_df = pd.read_csv("AF-to-IT.csv", dtype="unicode")
 All = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '!', '#', '$', '%', '&', '(', ')', '+', '/', ":"]
+# s_list = []
 
-# -------------------------------- Spotify ---------------------------------#
+# -------------------------------- Spotify / Reddit ---------------------------------#
 CLIENT_ID = os.environ["SPOTIFY-ID"]
 CLIENT_SECRET = os.environ["SPOTIFY-SECRET"]
 REDIRECT = "http://example.com"
 SCOPE = "playlist-read-private"
+Reddit_id = os.environ["Reddit_id"]
+Reddit_secret = os.environ["Reddit_secret"]
+Reddit_agent = os.environ["Reddit_agent"]
+
+reddit = asyncpraw.Reddit(client_id=Reddit_id, client_secret=Reddit_secret, user_agent=Reddit_agent)
 
 credentials = spotipy.oauth2.SpotifyClientCredentials(client_id=CLIENT_ID, client_secret=CLIENT_SECRET)
 
@@ -177,16 +186,24 @@ client.remove_command("help")
 @client.event
 async def on_ready():
     await client.change_presence(status=discord.Status.online, activity=discord.Game("Listening to .help"))
+    # await load_subredits()
 
 
-@client.command(name="ping", help="Shows the bot's latency")
+@client.command(name="ping", help="Shows the bot's latency", aliases=["Ping"])
 async def ping(ctx):
-    await ctx.send(f"Pong! {round(client.latency * 1000)}ms")
+    await send_embed(ctx, f"Pong! {round(client.latency * 1000)}ms", 40)
+
+
+async def send_embed(ctx, author: str, delete: int = None):
+    embed = Embed(color=discord.Colour.orange())
+    embed.set_author(name=author)
+    await ctx.send(embed=embed, delete_after=delete)
 
 
 # -------------------------------- Play CMD ----------------------------------#
 
-@client.command(name="p", help="Searches and plays the song by title or YT url or Spotify Url")
+@client.command(name="p", help="Searches and plays the song by title or YT url or Spotify Url",
+                aliases=["pone", "play"])
 async def p(ctx, *, args):
     global playing, INDEX, PLAYLIST, QUEUE
     if not playing:
@@ -195,7 +212,7 @@ async def p(ctx, *, args):
             vc = user.voice.channel
             voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
         except AttributeError:
-            await ctx.send("You must be connected to a voice channel first")
+            await send_embed(ctx, "You must be connected to a voice channel first", 40)
         else:
             if voice is None:
                 await vc.connect()
@@ -209,23 +226,19 @@ async def p(ctx, *, args):
         vc = user.voice.channel
         voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
         if voice.channel != vc:
-            await ctx.send("Already playing on another channel")
+            await send_embed(ctx, "Already playing on another channel", 40)
         elif voice.channel == vc and not PLAYLIST:
             getTracks(args)
             item = len(QUEUE) - 1
-            embed = discord.Embed(color=discord.Colour.orange())
-            embed.set_author(name=f" '{QUEUE[item][0]}' added to queue")
-            await ctx.send(embed=embed, delete_after=60)
+            await send_embed(ctx, f" '{QUEUE[item][0]}' added to queue", 120)
         elif voice.channel == vc and PLAYLIST:
             getTracks(args)
-            embed = discord.Embed(color=discord.Colour.orange())
-            embed.set_author(name="Playlist added to queue")
-            await ctx.send(embed=embed, delete_after=60)
+            await send_embed(ctx, "Playlist added to queue", 120)
 
 
 async def play_music(ctx):
     global INDEX, ID
-    embed = discord.Embed(color=discord.Color.orange())
+    embed = Embed(color=discord.Color.orange())
     play_next(ctx)
     embed.set_author(name=f"Currently playing: {QUEUE[INDEX - 1][0]}")
     after = After(QUEUE[INDEX - 1][1]) + 10
@@ -268,7 +281,7 @@ def downloadSpoti(INDEX):
             info = yt.extract_info("ytsearch:%s" % f"{QUEUE[INDEX][0]}", download=False)["entries"][0]
             url = info["formats"][0]["url"]
         except Exception:
-            None
+            print(None)
         else:
             return url
 
@@ -283,14 +296,14 @@ def After(time):
 async def on_message_delete(message):
     global INDEX, playing, ID
     if message.author == client.user and playing and message.id == ID:
-        embed = discord.Embed(color=discord.Color.orange())
+        embed = Embed(color=discord.Color.orange())
         embed.set_author(name=f"Currently playing: {QUEUE[INDEX - 1][0]}")
         after = After(QUEUE[INDEX - 1][1]) + 10
         message = await message.channel.send(embed=embed, delete_after=after)
         ID = message.id
 
 
-@client.command(name="pause", help="Pauses the current song")
+@client.command(name="pause", help="Pauses the current song", aliases=["para"])
 async def pause(ctx):
     global playing
     if playing:
@@ -299,7 +312,7 @@ async def pause(ctx):
         playing = False
 
 
-@client.command(name="resume", help="Resumes the current song")
+@client.command(name="resume", help="Resumes the current song", aliases=["segui"])
 async def resume(ctx):
     global playing
     if not playing:
@@ -308,7 +321,8 @@ async def resume(ctx):
         playing = True
 
 
-@client.command(name="skip", help="Skips the current song (the amount of songs to skip can be specified)")
+@client.command(name="skip", help="Skips the current song (the amount of songs to skip can be specified)",
+                aliases=["next"])
 async def skip(ctx, amount: int = 1):
     global playing, INDEX, ID
     if playing:
@@ -320,7 +334,7 @@ async def skip(ctx, amount: int = 1):
         await message.delete(delay=None)
 
 
-@client.command(name="back", help="Goes back to the last song played")
+@client.command(name="back", help="Goes back to the last song played", aliases=["atras"])
 async def back(ctx):
     global INDEX
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
@@ -330,7 +344,7 @@ async def back(ctx):
         try:
             message = await ctx.fetch_message(id=ID)
         except NotFound:
-            None
+            print(None)
         else:
             await message.delete(delay=None)
         play_next(ctx)
@@ -340,13 +354,13 @@ async def back(ctx):
         try:
             message = await ctx.fetch_message(id=ID)
         except NotFound:
-            None
+            print(None)
         else:
             await message.delete(delay=None)
         play_next(ctx)
 
 
-@client.command(name="stop", help="Stops the current song(clears the queue)")
+@client.command(name="stop", help="Stops the current song(clears the queue)", aliases=["cortala"])
 async def stop(ctx):
     global ID
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
@@ -354,16 +368,14 @@ async def stop(ctx):
     try:
         message = await ctx.fetch_message(id=ID)
     except NotFound:
-        None
+        print(None)
     else:
         resetVariables()
         await message.delete(delay=None)
-    embed = discord.Embed(color=discord.Colour.orange())
-    embed.set_author(name="Stoped playing music")
-    await ctx.send(embed=embed, delete_after=20)
+    await send_embed(ctx, "Stoped playing music", 40)
 
 
-@client.command(name="leave", help="Leaves the current voice channel")
+@client.command(name="leave", help="Leaves the current voice channel", aliases=["sali", "andate", "tomatela"])
 async def leave(ctx):
     global playing, INDEX
     voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
@@ -373,32 +385,12 @@ async def leave(ctx):
         try:
             message = await ctx.fetch_message(id=ID)
         except NotFound:
-            None
+            print(None)
         else:
             await message.delete(delay=None)
         resetVariables()
     elif voice is None:
-        embed = discord.Embed(color=discord.Colour.orange())
-        embed.set_author(name="Can't use that command right now")
-        await ctx.send(embed=embed, delete_after=20)
-
-
-@client.command(name="q", help="Shows the queue")
-async def q(ctx):
-    global QUEUE, INDEX
-    embed = discord.Embed(color=discord.Colour.orange())
-    embed.set_author(name="Queue")
-    if len(QUEUE) > 0:
-        for i in range(0, len(QUEUE)):
-            if i == INDEX - 1:
-                embed.add_field(name="Current", value=f" '{QUEUE[i][0]}' Duration: {QUEUE[i][1]}", inline=True)
-            else:
-                embed.add_field(name=f"{i}", value=f" '{QUEUE[i][0]}' Duration: {QUEUE[i][1]}", inline=True)
-        await ctx.send(embed=embed, delete_after=60)
-    else:
-        embed = discord.Embed(color=discord.Colour.orange())
-        embed.set_author(name="No music in the queue")
-        await ctx.send(embed=embed, delete_after=20)
+        await send_embed(ctx, "Can't use that command right now", 40)
 
 
 def resetVariables():
@@ -411,41 +403,65 @@ def resetVariables():
     LOOP = False
 
 
-@client.command(name="loop", help="Loops the current queue")
+# --------------------------------------------------------------------------------------------------------------------#
+
+@client.command(name="q", help="Shows the queue", aliases=["cola"])
+async def q(ctx):
+    global QUEUE, INDEX
+    embed = Embed(color=discord.Colour.orange())
+    embed.set_author(name="Queue")
+    if len(QUEUE) > 0:
+        for i in range(0, len(QUEUE)):
+            if i == INDEX - 1:
+                embed.add_field(name="Current", value=f" '{QUEUE[i][0]}' Duration: {QUEUE[i][1]}", inline=True)
+            else:
+                embed.add_field(name=f"{i}", value=f" '{QUEUE[i][0]}' Duration: {QUEUE[i][1]}", inline=True)
+        await ctx.send(embed=embed, delete_after=120)
+    else:
+        await send_embed(ctx, "No music in the queue", 40)
+
+
+@client.command(name="loop", help="Loops the current queue", aliases=["loopea"])
 async def loop(ctx):
     global LOOP
     if len(QUEUE) > 0:
         LOOP = True
-    await ctx.send("Playlist looped")
+        await send_embed(ctx, "Playlist looped", 40)
 
 
-@client.command(name="unloop", help="Unloops the current queue")
+@client.command(name="unloop", help="Unloops the current queue", aliases=["desloopea"])
 async def unloop(ctx):
     global LOOP
     if LOOP:
         LOOP = False
-    await ctx.send("Playlist unlooped")
+        await send_embed(ctx, "Playlist unlooped", 40)
 
 
-@client.command(name="remove", help="Removes a specified song from the queue")
+@client.command(name="remove", help="Removes a specified song from the queue", aliases=["eliminar", "sacar", "borrar"])
 async def remove(ctx, index: int):
     global QUEUE, INDEX
     if INDEX <= index < len(QUEUE):
-        embed = discord.Embed(color=discord.Colour.orange())
-        embed.set_author(name=f" '{QUEUE[index][0]}' has been removed from the queue")
+        await send_embed(ctx, f" '{QUEUE[index][0]}' has been removed from the queue", 60)
         QUEUE.pop(index)
-        await ctx.send(embed=embed, delete_after=60)
     elif index == "":
-        embed = discord.Embed(color=discord.Colour.orange())
-        embed.set_author(name="Please indicate what song to delete from the queue")
-        await ctx.send(embed=embed, delete_after=20)
+        await send_embed(ctx, "Please indicate what song to delete from the queue", 40)
     else:
-        embed = discord.Embed(color=discord.Colour.orange())
-        embed.set_author(name="Invalid number")
-        await ctx.send(embed=embed, delete_after=20)
+        await send_embed(ctx, "Invalid number", 40)
 
 
-@client.command(name="random", help="Plays a random song from spotify")
+@client.command(name="Cq", help="Clears the queue", aliases=["clear"])
+async def cq(ctx):
+    global QUEUE, INDEX
+    if len(QUEUE) > 0:
+        QUEUE = []
+        INDEX = 0
+        await pause(ctx)
+        await send_embed(ctx, "The queue has been cleared", 40)
+
+
+# -----------------------------------------------Random---------------------------------------------------#
+
+@client.command(name="random", help="Plays a random song from spotify", aliases=["rand", "azar"])
 async def random(ctx, amount: int = 1):
     for n in range(0, amount):
         song_list = randMusic()
@@ -464,7 +480,7 @@ def randWord(lan):
             randWord(lan)
         elif type(rand1) == str:
             choice = ran.randint(0, 9)
-            if choice < 2:
+            if choice <= 1:
                 rand1 += ran.choice(All)
             return rand1
     elif lan in second_df.columns:
@@ -473,7 +489,7 @@ def randWord(lan):
             randWord(lan)
         elif type(rand2) == str:
             choice = ran.randint(0, 9)
-            if choice < 2:
+            if choice <= 1:
                 rand2 += ran.choice(All)
             return rand2
 
@@ -497,7 +513,7 @@ def randSent():
         elif TRACK_l is None:
             randSent()
 
-    elif choice < 2:
+    elif choice <= 1:
         for i in range(0, 10):
             TRACK += ran.choice(All)
             TRACK_l.append(TRACK)
@@ -529,47 +545,183 @@ def randMusic():
         randMusic()
 
 
-@client.command(name="Cq", help="Clears the queue")
-async def cq(ctx):
-    global QUEUE, INDEX
-    if len(QUEUE) > 0:
-        QUEUE = []
-        INDEX = 0
-        await pause(ctx)
-        embed = discord.Embed(color=discord.Colour.orange())
-        embed.set_author(name="The queue has been cleared")
-        await ctx.send(embed=embed, delete_after=20)
+# --------------------------------------------------------------------------------------------------------------------#
 
 
 # -------------------------------- Other CMD's ----------------------------------#
 
-@client.command(name="haceme_un_sanguche", help="Para bauti")
+
+@client.command(name="haceme_un_sanguche", help="Para bauti", aliases=["sanguchito"])
 async def haceme_un_sanguche(ctx):
-    await ctx.send("Aqui tienes tu sandwich uwu :point_right::point_left:")
+    await REDDIT(ctx, ["sandwich", "Sandwich", "sandwiches", "sandwiches", "Thighs"])
 
 
-@client.command(name="boca", help="Dale boca dale")
+@client.command(name="boca", help="Dale boca dale", aliases=["dale_boca"])
 async def boca(ctx):
-    await p(ctx, args="https://www.youtube.com/watch?v=jrzOn0Uz15g&ab_channel=Niglett")
-    await ctx.send("Vamos boca :blue_heart::yellow_heart::blue_heart:")
+    try:
+        await p(ctx, args="https://www.youtube.com/watch?v=jrzOn0Uz15g&ab_channel=Niglett")
+    except spotipy.exceptions.SpotifyException or HTTPError or TypeError:
+        refresh()
+        await boca(ctx)
+    else:
+        await send_embed(ctx, "Vamos boca :blue_heart::yellow_heart::blue_heart:", 60)
 
 
-@client.command(name="help", help="This command")
-async def help(ctx):
-    embed = discord.Embed(color=discord.Colour.orange())
-    embed.set_author(name="Help")
-
-    for command in client.commands:
-        embed.add_field(name=f"{command.name}", value=f"{command.help}", inline=False)
-
-    await ctx.send(embed=embed, delete_after=100)
-
-@client.command(name="nene_malo", help="Lo bailan las rochas tambien las chetas")
+@client.command(name="nene_malo", help="Lo bailan las rochas tambien las chetas", aliases=["rochas", "chetas"])
 async def nene_malo(ctx):
-    await p(ctx, args="https://open.spotify.com/track/3lC4mM6NiSLttfYTv1HTNQ?si=973671fd69054a13")
-    await ctx.send("Lo bailan las rochas tambien las chetas")
+    try:
+        await p(ctx, args="https://open.spotify.com/track/3lC4mM6NiSLttfYTv1HTNQ?si=973671fd69054a13")
+    except spotipy.exceptions.SpotifyException or HTTPError or TypeError:
+        refresh()
+        await nene_malo(ctx)
+    else:
+        await send_embed(ctx, "Lo bailan las rochas tambien las chetas", 60)
 
-#@client.command(name="fiesta", help="Fiestita")
-#async def fiesta(ctx):
 
+# -----------------------------------------------NSFW---------------------------------------------------------#
+@client.command(name="traps", help="NSFW Traps", aliases=["trapito", "trapitos"])
+async def traps(ctx):
+    await REDDIT(ctx, ["traps", "trapsgonewild", "trapsexuals"])
+
+
+@client.command(name="porn", help="NSFW Lechoso el que lo use", aliases=["porno", "paja"])
+async def porn(ctx):
+    await REDDIT(ctx, ["porn", "Porn", "porngifs"])
+
+
+@client.command(name="gay", help="NSFW Gay", aliases=["trolo", "putos"])
+async def gay(ctx):
+    await REDDIT(ctx, ["gayporn", "GaybrosGoneWild"])
+
+
+@client.command(name="boobs", help="NSFW Boobs", aliases=["tetas", "teta", "tittie"])
+async def boobs(ctx):
+    await REDDIT(ctx, ["boob", "boobbounce", "boobs", "Boobies"])
+
+
+@client.command(name="Porn4k", help="NSFW  Para los mas lechosos", aliases=["4k", "4kP"])
+async def Porn4k(ctx):
+    await REDDIT(ctx, ["4kPorn", "4k_porn"])
+
+
+@client.command(name="ass", help="NSFW ass", aliases=["culo", "culos", "booty"])
+async def ass(ctx):
+    await REDDIT(ctx, ["ass", "booty", "booty_queens"])
+
+
+@client.command(name="r_search", help="Search reddit images (CaSe SenSitiVe)", aliases=["search", "reddit", "rsearch"])
+async def r_search(ctx, *, args):
+    search = args
+    subreddit = await reddit.subreddit(search)
+    try:
+        je = []
+        async for si in subreddit.hot(limit=25):
+            je.append(si.url)
+    except asyncprawcore.exceptions.Forbidden:
+        await send_embed(ctx, "Subreddit private", 40)
+    except asyncprawcore.exceptions.Redirect:
+        await send_embed(ctx, "Subreddit not found ", 40)
+    except asyncprawcore.exceptions.NotFound:
+        await send_embed(ctx, "Subreddit is banned", 40)
+    else:
+        if len(je) < 25:
+            await send_embed(ctx, "The subreddit has very few posts", 40)
+        else:
+            await REDDIT(ctx, [subreddit])
+
+
+# -----------------------------------------------NSFW---------------------------------------------------------#
+async def REDDIT(ctx, choices: list):
+    if choices == [0, 1]:
+        subr = ran.choice(choices)
+        if subr == 1:
+            subreddit = await reddit.random_subreddit(nsfw=True)
+        else:
+            subreddit = await reddit.random_subreddit()
+    elif len(choices) == 1:
+        subreddit = choices[0]
+    else:
+        subr = ran.choice(choices)
+        subreddit = await reddit.subreddit(subr)
+
+    submission = await subreddit.random()
+
+    if submission is not None:
+        if "png" in submission.url[-4:] or "jpg" in submission.url[-4:] or "jpge" in submission.url[
+                                                                                     -4:] or "gif" in submission.url[
+                                                                                                      -4:] \
+                and "gifv" not in submission.url[-5:]:
+            embed = Embed(color=discord.Colour.orange())
+            embed.set_author(name=subreddit.display_name, url=f"https://www.reddit.com/r/{subreddit.display_name}/")
+            embed.set_image(url=submission.url)
+
+            if choices == ["sandwich", "Sandwich", "sandwiches", "sandwiches", "Thighs"]:
+                embed.set_footer(text=f"Aqui tienes tu sandwich '{ctx.message.author.name}' uwu",
+                                 icon_url=ctx.message.author.avatar_url)
+            else:
+                embed.set_footer(text=ctx.message.author.name,
+                                 icon_url=ctx.message.author.avatar_url)
+
+            await ctx.send(embed=embed)
+        else:
+            await REDDIT(ctx, choices)
+    else:
+        await REDDIT(ctx, choices)
+
+
+@client.command(name="random_subr", help="Random Subreddit", aliases=["rand_subr", "randr", "rsubr"])
+async def random_subr(ctx):
+    await REDDIT(ctx, [0, 1])
+
+
+@client.command(name="help", help="This command", aliases=["ayuda"])
+async def help(ctx, help_type: str = " "):
+    embed = Embed(color=discord.Colour.orange())
+    embed.set_author(name=f"Help {help_type.title()}")
+    if help_type == " ":
+        embed.add_field(name="Music", value="Help with music\nExamples = play, queue, skip",
+                        inline=True)
+        embed.add_field(name="NSFW", value="Help with NSFW\nExamples = porn, 4kPorn, traps",
+                        inline=True)
+        embed.add_field(name="Extras", value="Help with extras\nExamples = random, ping, reddit search",
+                        inline=True)
+    elif help_type.casefold() == "music":
+        for command in client.commands:
+            if command.name in ["p", "back", "stop", "leave", "q", "loop", "unloop",
+                                "remove", "Cq", "pause", "resume", "skip"]:
+                embed.add_field(name=f"{command.name}",
+                                value=f"{command.help}.\nAlso works with = {str(command.aliases)}",
+                                inline=True)
+    elif help_type.casefold() == "nsfw":
+        for command in client.commands:
+            if command.name in ["porn", "gay", "boobs", "Porn4k", "traps", "ass"]:
+                embed.add_field(name=f"{command.name}",
+                                value=f"{command.help}.\nAlso works with = {str(command.aliases)}",
+                                inline=True)
+    elif help_type.casefold() == "extras":
+        for command in client.commands:
+            if command.name in ["help", "random", "haceme_un_sanguche",
+                                "nene_malo", "boca", "ping", "r_search", "random_subr"]:
+                embed.add_field(name=f"{command.name}",
+                                value=f"{command.help}.\nAlso works with = {str(command.aliases)}",
+                                inline=True)
+    else:
+        embed.set_author(name="Invalid help command")
+
+    await ctx.send(embed=embed)
+
+
+# -------------------------------------------------PROJECTS-----------------------------------------------------------#
+# @client.command(name="fiesta", help="Fiestita")
+# async def fiesta(ctx):
+
+async def load_subredits():
+    global s_list
+    subreddit = await reddit.subreddit("sandwich")
+    for n in range(0, 500):
+        submission = await subreddit.random()
+        if ("png" or "jpg" or "jpge" or "gif") in submission.url[-5:]:
+            s_list.append(submission.url)
+    print(s_list)
+# ---------------------------------------------------------------------------------------------------------------------#
 client.run(key)
