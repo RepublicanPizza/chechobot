@@ -581,32 +581,49 @@ async def nene_malo(ctx):
 # -----------------------------------------------NSFW---------------------------------------------------------#
 @client.command(name="traps", help="NSFW Traps", aliases=["trapito", "trapitos"])
 async def traps(ctx):
-    await REDDIT(ctx, ["traps", "trapsgonewild", "trapsexuals"])
+    if ctx.channel.is_nsfw is True:
+        await REDDIT(ctx, ["traps", "trapsgonewild", "trapsexuals"])
+    else:
+        await send_embed(ctx, "This channel doesn't support NSFW", None)
 
 
 @client.command(name="porn", help="NSFW Lechoso el que lo use", aliases=["porno", "paja"])
 async def porn(ctx):
-    await REDDIT(ctx, ["porn", "Porn", "porngifs"])
+    if ctx.channel.is_nsfw is True:
+        await REDDIT(ctx, ["porn", "Porn", "porngifs"])
+    else:
+        await send_embed(ctx, "This channel doesn't support NSFW", None)
 
 
 @client.command(name="gay", help="NSFW Gay", aliases=["trolo", "putos"])
 async def gay(ctx):
-    await REDDIT(ctx, ["gayporn", "GaybrosGoneWild"])
-
+    if ctx.channel.is_nsfw is True:
+        await REDDIT(ctx, ["gayporn", "GaybrosGoneWild"])
+    else:
+        await send_embed(ctx, "This channel doesn't support NSFW", None)
 
 @client.command(name="boobs", help="NSFW Boobs", aliases=["tetas", "teta", "tittie"])
 async def boobs(ctx):
-    await REDDIT(ctx, ["boob", "boobbounce", "boobs", "Boobies"])
+    if ctx.channel.is_nsfw is True:
+        await REDDIT(ctx, ["boob", "boobbounce", "boobs", "Boobies"])
+    else:
+        await send_embed(ctx, "This channel doesn't support NSFW", None)
 
 
 @client.command(name="Porn4k", help="NSFW  Para los mas lechosos", aliases=["4k", "4kP"])
 async def Porn4k(ctx):
-    await REDDIT(ctx, ["4kPorn", "4k_porn"])
+    if ctx.channel.is_nsfw is True:
+        await REDDIT(ctx, ["4kPorn", "4k_porn"])
+    else:
+        await send_embed(ctx, "This channel doesn't support NSFW", None)
 
 
 @client.command(name="ass", help="NSFW ass", aliases=["culo", "culos", "booty"])
 async def ass(ctx):
-    await REDDIT(ctx, ["ass", "booty", "booty_queens"])
+    if ctx.channel.is_nsfw is True:
+        await REDDIT(ctx, ["ass", "booty", "booty_queens"])
+    else:
+        await send_embed(ctx, "This channel doesn't support NSFW", None)
 
 
 @client.command(name="r_search", help="Search reddit images (CaSe SenSitiVe)", aliases=["search", "reddit", "rsearch"])
