@@ -59,7 +59,6 @@ def getTracks(url):
     global PLAYLIST, QUEUE
     if "www.youtube.com" in url:
         PLAYLIST = False
-        url = url[32:43]
         youtube_op = {"format": "bestaudio", "noplaylist": "True", "--age-limit": 25}
         with YoutubeDL(youtube_op) as yt:
             try:
