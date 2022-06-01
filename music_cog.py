@@ -9,7 +9,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import pandas as pd
 import random as ran
 import os
-import time
+import asyncio
 
 
 class Music(commands.Cog):
@@ -19,10 +19,8 @@ class Music(commands.Cog):
         self.PLAYLIST = False
         self.INDEX = 0
         self.QUEUE = []
-        self.ID = 0
         self.playing = False
         self.LOOP = False
-        self.TIME = 0
         self.key = os.environ["DISCORD"]
         self.first_df = pd.read_csv("to-ZETW.csv", dtype="unicode")
         self.second_df = pd.read_csv("AF-to-IT.csv", dtype="unicode")
@@ -189,10 +187,10 @@ class Music(commands.Cog):
                 if voice is None:
                     await vc.connect()
                     self.getTracks(args)
-                    await self.play_music(ctx)
+                    self.play_next(ctx)
                 elif voice.channel and voice.channel == vc:
                     self.getTracks(args)
-                    await self.play_music(ctx)
+                    self.play_next(ctx)
         else:
             user = ctx.message.author
             vc = user.voice.channel
@@ -207,13 +205,6 @@ class Music(commands.Cog):
                 self.getTracks(args)
                 await self.send_embed(ctx, "Playlist added to queue", 120)
 
-    async def play_music(self, ctx):
-        embed = Embed(color=discord.Color.orange())
-        self.play_next(ctx)
-        embed.set_author(name=f"Currently playing: {self.QUEUE[self.INDEX - 1][0]}")
-        after = self.After(self.QUEUE[self.INDEX - 1][1]) + 10
-        message = await ctx.send(embed=embed, delete_after=after)
-        self.ID = message.id
 
     def play_next(self, ctx):
         if self.INDEX == len(self.QUEUE) and self.LOOP:
@@ -225,20 +216,26 @@ class Music(commands.Cog):
                 url = self.QUEUE[self.INDEX][2]
                 voice = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
                 voice.play(source=discord.FFmpegPCMAudio(url, **self.ff_op), after=lambda e: self.play_next(ctx))
-                self.save(self.QUEUE[self.INDEX][0])
                 self.playing = True
                 self.INDEX += 1
-                self.TIME = time.time()
+                self.send_song(ctx)
             elif len(self.QUEUE[self.INDEX]) == 2:
                 url = self.downloadSpoti(self.INDEX)
                 voice = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
                 voice.play(source=discord.FFmpegPCMAudio(url, **self.ff_op), after=lambda e: self.play_next(ctx))
-                self.save(self.QUEUE[self.INDEX][0])
                 self.playing = True
                 self.INDEX += 1
-                self.TIME = time.time()
+                self.send_song(ctx)
         else:
             self.playing = False
+
+    def send_song(self, ctx):
+        embed = Embed(color=discord.Colour.orange())
+        embed.set_author(name="Currently playing")
+        embed.add_field(name=f"{self.QUEUE[self.INDEX-1][0]}", value=f"Duration: {self.QUEUE[self.INDEX-1][1]}")
+        channel = self.bot.get_channel(ctx.channel.id)
+        self.bot.loop.create_task(channel.send(embed=embed))
+
 
     def downloadSpoti(self, INDEX):
         with YoutubeDL(self.youtube_op) as yt:
@@ -250,19 +247,7 @@ class Music(commands.Cog):
             else:
                 return url
 
-    def After(self, time):
-        sec = int(time[len(time) - 2:])
-        min = int(time[0:time.find(":")])
-        return sec + min * 60
 
-    @commands.Cog.listener()
-    async def on_message_delete(self, message):
-        if message.author == self.bot.user and self.playing and message.id == self.ID:
-            embed = Embed(color=discord.Color.orange())
-            embed.set_author(name=f"Currently playing: {self.QUEUE[self.INDEX - 1][0]}")
-            after = self.After(self.QUEUE[self.INDEX - 1][1]) + 10
-            message = await message.channel.send(embed=embed, delete_after=after)
-            self.ID = message.id
 
     @commands.command(name="pause", help="Pauses the current song", aliases=["para"])
     async def pause(self, ctx):
@@ -286,10 +271,8 @@ class Music(commands.Cog):
         if self.playing:
             voice = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
             voice.pause()
-            message = await ctx.fetch_message(id=self.ID)
             self.INDEX += amount - 1
             self.play_next(ctx)
-            await message.delete(delay=None)
 
     @commands.command(name="back", help="Goes back to the last song played", aliases=["atras"])
     async def back(self, ctx):
@@ -297,35 +280,17 @@ class Music(commands.Cog):
         if self.playing and self.INDEX > 1:
             voice.pause()
             self.INDEX -= 2
-            try:
-                message = await ctx.fetch_message(id=self.ID)
-            except NotFound:
-                print(None)
-            else:
-                await message.delete(delay=None)
             self.play_next(ctx)
         elif self.playing and self.INDEX == 1:
             voice.pause()
             self.INDEX -= 1
-            try:
-                message = await ctx.fetch_message(id=self.ID)
-            except NotFound:
-                print(None)
-            else:
-                await message.delete(delay=None)
             self.play_next(ctx)
 
     @commands.command(name="stop", help="Stops the current song(clears the queue)", aliases=["cortala"])
     async def stop(self, ctx):
         voice = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
         voice.pause()
-        try:
-            message = await ctx.fetch_message(id=self.ID)
-        except NotFound:
-            print(None)
-        else:
-            self.resetVariables()
-            await message.delete(delay=None)
+        self.resetVariables()
         await self.send_embed(ctx, "Stoped playing music", 40)
 
     @commands.command(name="leave", help="Leaves the current voice channel", aliases=["sali", "andate", "tomatela"])
@@ -334,12 +299,6 @@ class Music(commands.Cog):
         if voice is not None:
             voice.stop()
             await voice.disconnect()
-            try:
-                message = await ctx.fetch_message(id=self.ID)
-            except NotFound:
-                print(None)
-            else:
-                await message.delete(delay=None)
             self.resetVariables()
         elif voice is None:
             await self.send_embed(ctx, "Can't use that command right now", 40)
@@ -348,7 +307,6 @@ class Music(commands.Cog):
         self.PLAYLIST = False
         self.INDEX = 0
         self.QUEUE = []
-        self.ID = 0
         self.playing = False
         self.LOOP = False
 
@@ -500,3 +458,18 @@ class Music(commands.Cog):
             await self.boca(ctx)
         else:
             await self.send_embed(ctx, "Vamos boca :blue_heart::yellow_heart::blue_heart:", 60)
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        if member.id == self.bot.user.id:
+            if before.channel is None:
+                voice = after.channel.guild.voice_client
+                time = 0
+                while voice.is_connected():
+                    await asyncio.sleep(1)
+                    time = time + 1
+                    if voice.is_playing() and self.playing:
+                        time = 0
+                    if time == 300:
+                        await voice.disconnect()
+
