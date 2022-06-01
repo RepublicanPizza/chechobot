@@ -473,5 +473,3 @@ class Music(commands.Cog):
                         time = 0
                     if time == 10:
                         await voice.disconnect()
-                    if not voice.is_connected():
-                        break
