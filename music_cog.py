@@ -462,14 +462,16 @@ class Music(commands.Cog):
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         if member.id == self.bot.user.id:
-            if before.channel is None:
+            if before.channel is None or (before.channel == after.channel):
                 voice = after.channel.guild.voice_client
                 time = 0
-                while voice.is_connected():
+                while True:
                     await asyncio.sleep(1)
+                    print(time)
                     time = time + 1
                     if voice.is_playing() and self.playing:
                         time = 0
-                    if time == 300:
+                    if time == 10:
                         await voice.disconnect()
-
+                    if not voice.is_connected():
+                        break
