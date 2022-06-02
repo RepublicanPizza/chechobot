@@ -467,12 +467,11 @@ class Music(commands.Cog):
                 time = 0
                 while True:
                     await asyncio.sleep(1)
-                    print(time)
                     time = time + 1
 
                     if voice.is_playing() and self.playing:
                         time = 0
 
-                    if time == 10:
+                    if time == 300:
                         await voice.disconnect()
                         break
